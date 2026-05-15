@@ -3,7 +3,7 @@
 /// @brief Capture video on live camera
 /// @namespace cv
 
-#include <opencv2/opencv.hpp>
+#include "common.h"
 
 /**
  * @class Frame
