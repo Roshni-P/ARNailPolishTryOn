@@ -15,6 +15,7 @@ public:
 	Frame();
 	~Frame();
 	int captureFrame();
+	cv::Mat getFrame() const { return frame; }
 private:
 	cv::Mat frame;
 };
