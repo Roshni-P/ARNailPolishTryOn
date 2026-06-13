@@ -19,3 +19,14 @@ public:
 private:
 	cv::Mat frame;
 };
+
+class FrameQueue
+{
+public:
+	void push(const Frame& frame);
+	bool pop(Frame& frame);
+private:
+	std::queue<Frame> queue;
+	std::mutex mtx;
+	std::condition_variable cv;
+};

@@ -47,3 +47,26 @@ int Frame::captureFrame()
 
 	return 0;
 }
+
+void FrameQueue::push(const Frame& frame)
+{
+	std::lock_guard<std::mutex> lock(mtx);
+	if (queue.size() >= MAX_QSIZE)
+	{
+		queue.pop();
+	}
+	queue.push(frame);
+	cv.notify_one();
+}
+
+bool FrameQueue::pop(Frame& frame)
+{
+	std::unique_lock<std::mutex> lock(mtx);
+
+	cv.wait(lock, [this]() { return !queue.empty(); });
+
+	frame = queue.front();
+	queue.pop();
+
+	return true;
+}
