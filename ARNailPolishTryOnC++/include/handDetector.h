@@ -11,7 +11,7 @@ public:
 	}
 protected:
 	virtual int LoadModel(std::string path) { return -1; }
-	virtual int DetectFrame(const Frame& frame) { return -1;  }
+	virtual int DetectFrame(Frame& frame) { return -1;  }
 	cv::dnn::Net net;
 };
 
@@ -20,7 +20,7 @@ class HandDetector : public IDetector
 public:
 	std::vector<Anchor> generateAnchors(int image_width, int image_height);
 	int LoadModel(std::string path) override;
-	int DetectFrame(const Frame& frame) override;
+	int DetectFrame(Frame& frame) override;
 private:
 
 };

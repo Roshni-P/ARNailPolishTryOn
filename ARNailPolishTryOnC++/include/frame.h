@@ -15,18 +15,23 @@ public:
 	Frame();
 	~Frame();
 	int captureFrame();
-	cv::Mat getFrame() const { return frame; }
+	bool getFrame(cv::Mat& outputFrame);
+	void stopCapture();
 private:
+	cv::VideoCapture cap;
 	cv::Mat frame;
+	std::thread workerThread;
+	std::atomic<bool> isRunning;
+	std::mutex frameMutex;
 };
 
 class FrameQueue
 {
 public:
-	void push(const Frame& frame);
-	bool pop(Frame& frame);
+	void push(cv::Mat& frame);
+	bool pop(cv::Mat& frame);
 private:
-	std::queue<Frame> queue;
+	std::queue<cv::Mat> queue;
 	std::mutex mtx;
 	std::condition_variable cv;
 };

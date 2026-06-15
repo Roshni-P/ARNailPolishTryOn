@@ -1,12 +1,22 @@
 #include "frame.h"
 #include <iostream>
 
-Frame::Frame()
+Frame::Frame():isRunning(false)
 {
+	if (!cap.isOpened())
+	{
+		std::cerr << "Error: Unable to open camera." << std::endl;
+		return;
+	}
+	cv::namedWindow("Live Camera!", cv::WINDOW_AUTOSIZE);
+
+	isRunning = true;
+	//workerThread = std::thread(&Frame::captureFrame, this);
 }
 
 Frame::~Frame()
 {
+	stopCapture();
 }
 
 /**
@@ -16,39 +26,58 @@ Frame::~Frame()
  */
 int Frame::captureFrame()
 {
-	cv::VideoCapture cap(0);
+	cv::Mat tempFrame;
 
-	if (!cap.isOpened())
+	while (isRunning)
 	{
-		std::cerr << "Error: Unable to open camera." << std::endl;
-		return -1;
-	}
+		cap >> tempFrame;
+		if (tempFrame.empty()) continue;
 
-	cv::namedWindow("Live Camera!", cv::WINDOW_AUTOSIZE);
-
-	while (true)
-	{
-		cv::Mat frame;
-		bool bRet = cap.read(frame);
-		if (!bRet || frame.empty())
 		{
-			std::cerr << "Error reading frame." << std::endl;
-			return -1;
+			std::lock_guard<std::mutex> lock(frameMutex);
+			frame = tempFrame.clone();
 		}
 
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		cv::imshow("Live Camera!", frame);
 
 		if (cv::waitKey(1) == 27) // ESC key, to break
 			break;
 	}
 
-	cap.release();
-	cv::destroyAllWindows();
-
 	return 0;
 }
 
-void FrameQueue::push(const Frame& frame)
+bool Frame::getFrame(cv::Mat& outputFrame)
+{
+	std::lock_guard<std::mutex> lock(frameMutex);
+	if (frame.empty())
+		return false;
+
+	outputFrame = frame.clone();
+
+	return true;
+}
+
+void Frame::stopCapture()
+{
+	if (isRunning)
+	{
+		isRunning = false;
+		if (workerThread.joinable())
+		{
+			workerThread.join();
+		}
+		cap.release();
+		std::cout << "Stopping video capture..." << std::endl;
+	}
+}
+
+/// <summary>
+/// Queue of frames, with the latest frame on top
+/// </summary>
+/// <param name="frame"></param>
+void FrameQueue::push(cv::Mat& frame)
 {
 	std::lock_guard<std::mutex> lock(mtx);
 	if (queue.size() >= MAX_QSIZE)
@@ -59,7 +88,7 @@ void FrameQueue::push(const Frame& frame)
 	cv.notify_one();
 }
 
-bool FrameQueue::pop(Frame& frame)
+bool FrameQueue::pop(cv::Mat& frame)
 {
 	std::unique_lock<std::mutex> lock(mtx);
 
