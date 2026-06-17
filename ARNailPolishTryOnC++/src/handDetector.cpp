@@ -51,11 +51,9 @@ int HandDetector::LoadModel(std::string path)
     return 0;
 }
 
-int HandDetector::DetectFrame(Frame& frame)
+int HandDetector::DetectFrame(cv::Mat& latestFrame)
 {
     std::vector<Anchor> anchors = generateAnchors(INPUT_WIDTH, INPUT_HEIGHT);
-    cv::Mat latestFrame;
-    frame.getFrame(latestFrame);
     int frameWidth = latestFrame.cols;
     int frameHeight = latestFrame.rows;
 
@@ -169,10 +167,10 @@ int HandDetector::DetectFrame(Frame& frame)
     cv::imshow("MediaPipe Hand Detector", latestFrame);
 
     // Exit on pressing 'ESC'
-    if (cv::waitKey(1) == 27) return -1;
+    //if (cv::waitKey(1) == 27) return -1;
 
     //cap.release();
-    cv::destroyAllWindows();
+//    cv::destroyAllWindows();
 
     return 0;
 }

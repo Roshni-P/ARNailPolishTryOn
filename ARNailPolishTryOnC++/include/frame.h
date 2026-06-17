@@ -6,31 +6,24 @@
 #include "common.h"
 
 /**
- * @class Frame
- * @brief Captures live camera feed
+ * @class FrameQueue
+ * @brief Captures live camera feed with the latest 
+ * frame, at the top of queue
  */
-class Frame
+
+class FrameQueue
 {
 public:
-	Frame();
-	~Frame();
+	FrameQueue();
+	~FrameQueue();
+	bool getLatestFrame(cv::Mat& frame);
 	int captureFrame();
-	bool getFrame(cv::Mat& outputFrame);
 	void stopCapture();
 private:
 	cv::VideoCapture cap;
 	cv::Mat frame;
 	std::thread workerThread;
 	std::atomic<bool> isRunning;
-	std::mutex frameMutex;
-};
-
-class FrameQueue
-{
-public:
-	void push(cv::Mat& frame);
-	bool pop(cv::Mat& frame);
-private:
 	std::queue<cv::Mat> queue;
 	std::mutex mtx;
 	std::condition_variable cv;

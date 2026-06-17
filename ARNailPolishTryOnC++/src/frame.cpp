@@ -1,30 +1,45 @@
 #include "frame.h"
 #include <iostream>
 
-Frame::Frame():isRunning(false)
+FrameQueue::FrameQueue() :isRunning(false)
 {
+	cap.open(0, cv::CAP_DSHOW);
 	if (!cap.isOpened())
 	{
 		std::cerr << "Error: Unable to open camera." << std::endl;
 		return;
 	}
-	cv::namedWindow("Live Camera!", cv::WINDOW_AUTOSIZE);
-
+	
 	isRunning = true;
-	//workerThread = std::thread(&Frame::captureFrame, this);
+	workerThread = std::thread(&FrameQueue::captureFrame, this);
 }
 
-Frame::~Frame()
+FrameQueue::~FrameQueue()
 {
 	stopCapture();
 }
 
+void FrameQueue::stopCapture()
+{
+	if (isRunning)
+	{
+		isRunning = false;
+		if (workerThread.joinable())
+		{
+			workerThread.join();
+		}
+		
+		cap.release();
+		std::cout << "Stopping video capture..." << std::endl;
+	}
+}
+
 /**
  * @brief Captures frames from Live camera
- * @param 
+ * @param
  * @return error code - 0 if no errors
  */
-int Frame::captureFrame()
+int FrameQueue::captureFrame()
 {
 	cv::Mat tempFrame;
 
@@ -34,12 +49,11 @@ int Frame::captureFrame()
 		if (tempFrame.empty()) continue;
 
 		{
-			std::lock_guard<std::mutex> lock(frameMutex);
+			std::lock_guard<std::mutex> lock(mtx);
 			frame = tempFrame.clone();
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(5));
-		cv::imshow("Live Camera!", frame);
+		//std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
 		if (cv::waitKey(1) == 27) // ESC key, to break
 			break;
@@ -48,54 +62,12 @@ int Frame::captureFrame()
 	return 0;
 }
 
-bool Frame::getFrame(cv::Mat& outputFrame)
-{
-	std::lock_guard<std::mutex> lock(frameMutex);
-	if (frame.empty())
-		return false;
-
-	outputFrame = frame.clone();
-
-	return true;
-}
-
-void Frame::stopCapture()
-{
-	if (isRunning)
-	{
-		isRunning = false;
-		if (workerThread.joinable())
-		{
-			workerThread.join();
-		}
-		cap.release();
-		std::cout << "Stopping video capture..." << std::endl;
-	}
-}
-
-/// <summary>
-/// Queue of frames, with the latest frame on top
-/// </summary>
-/// <param name="frame"></param>
-void FrameQueue::push(cv::Mat& frame)
+bool FrameQueue::getLatestFrame(cv::Mat& latestFrame)
 {
 	std::lock_guard<std::mutex> lock(mtx);
-	if (queue.size() >= MAX_QSIZE)
-	{
-		queue.pop();
-	}
-	queue.push(frame);
-	cv.notify_one();
-}
+	if (frame.empty())	return false;
 
-bool FrameQueue::pop(cv::Mat& frame)
-{
-	std::unique_lock<std::mutex> lock(mtx);
-
-	cv.wait(lock, [this]() { return !queue.empty(); });
-
-	frame = queue.front();
-	queue.pop();
-
+	latestFrame = frame.clone();
+	
 	return true;
 }

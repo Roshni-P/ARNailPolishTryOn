@@ -1,21 +1,37 @@
 #include <iostream>
 #include "frame.h"
 #include "common.h"
-#include "handLandmarks.h"
+#include "modelFactory.h"
+#include "handDetector.h"
+
 
 int main()
 {
-	Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "test");
-	std::cout << "ONNX Runtime initialized successfully!" << std::endl;
 
 /*	Frame obj;
 	obj.captureFrame();
 	*/
 
-	HandLandmarks hl;
-	hl.detectHandLandmarks();
+	std::unique_ptr<HandDetector> handDetector = ModelFactory::Create<ModelType::HandDetector>();
+	handDetector->LoadModel("D:/ARNailPolishTryOn/ARNailPolishTryOnC++/models/Google/hand_detector.onnx");
+
+	FrameQueue cam;
+	std::cout << "Started Live Feed." << std::endl;
+	cv::Mat displayFrame;
+	while (true)
+	{
+		cam.getLatestFrame(displayFrame);
+		if (displayFrame.empty())
+			continue;
+
+		//cv::imshow("Live Camera!", displayFrame);
+
+		handDetector->DetectFrame(displayFrame);
+
+		if (cv::waitKey(1) == 27) break;
+	}
 
 	std::cout << "Exiting App!" << std::endl;
-
+	cv::destroyAllWindows();
 	return 1;
 }
