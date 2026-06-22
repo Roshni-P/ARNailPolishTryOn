@@ -19,7 +19,7 @@ template<> struct ModelMap<ModelType::HandDetector>
 
 template<> struct ModelMap<ModelType::HandLandmark>
 {
-	using type = NailDetector;
+	using type = HandLandmarksDetector;
 };
 
 class ModelFactory

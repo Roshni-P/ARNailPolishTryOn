@@ -6,7 +6,7 @@
 #include <onnxruntime_cxx_api.h>
 
 // Forward Declaration
-class HandLandmarks;
+class HandLandmarksDetector;
 class IDetector;
 class NailDetector;
 class HandDetector;

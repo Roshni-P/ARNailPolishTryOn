@@ -41,7 +41,7 @@ int HandDetector::LoadModel(std::string path)
 {
     net = cv::dnn::readNetFromONNX(path);
     if (net.empty()) {
-        std::cerr << "Error: Could not load the ONNX model. Check the path!" << std::endl;
+        std::cerr << "Error: Could not load Hand Detector model. Check the path!" << std::endl;
         return -1;
     }
 
@@ -51,7 +51,7 @@ int HandDetector::LoadModel(std::string path)
     return 0;
 }
 
-int HandDetector::DetectFrame(cv::Mat& latestFrame)
+int HandDetector::DetectFrame(cv::Mat& latestFrame, cv::Mat& handROI)
 {
     std::vector<Anchor> anchors = generateAnchors(INPUT_WIDTH, INPUT_HEIGHT);
     int frameWidth = latestFrame.cols;
@@ -102,6 +102,13 @@ int HandDetector::DetectFrame(cv::Mat& latestFrame)
             float dw = rawBoxes.at<float>(i, 2);
             float dh = rawBoxes.at<float>(i, 3);
 
+            // Protection against NaN or Inf values from border-crossing anchors.
+            // Else the bbox is defaulting to 0,0 in a few cases
+            if (std::isnan(dx) || std::isnan(dy) || std::isnan(dw) || std::isnan(dh) ||
+                std::isinf(dx) || std::isinf(dy)) {
+                continue;
+            }
+
             // Scale factors commonly used by MediaPipe SSD models
             float box_scale_x = 256.0f;
             float box_scale_y = 256.0f;
@@ -150,27 +157,21 @@ int HandDetector::DetectFrame(cv::Mat& latestFrame)
 
     // 7. Extract and Draw Hand ROI
     for (int idx : indices) {
-        cv::Rect handROI = bboxes[idx];
+        cv::Rect rectROI = bboxes[idx];
 
         // Draw bounding box on original frame
-        cv::rectangle(latestFrame, handROI, cv::Scalar(0, 255, 0), 2);
+        cv::rectangle(latestFrame, rectROI, cv::Scalar(0, 255, 0), 2);
         cv::putText(latestFrame, "Hand: " + std::to_string(confidences[idx]).substr(0, 4),
-            cv::Point(handROI.x, handROI.y - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+            cv::Point(rectROI.x, rectROI.y - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
 
         // Crop the Hand ROI if you need to pass it to a gesture or landmark model
-        cv::Mat croppedHand = latestFrame(handROI);
+        handROI = latestFrame(rectROI);
 
         // Optional: Display the isolated hand ROI in a separate window
-        cv::imshow("Hand ROI", croppedHand);
+        cv::imshow("Hand ROI", handROI);
     }
 
     cv::imshow("MediaPipe Hand Detector", latestFrame);
-
-    // Exit on pressing 'ESC'
-    //if (cv::waitKey(1) == 27) return -1;
-
-    //cap.release();
-//    cv::destroyAllWindows();
 
     return 0;
 }
